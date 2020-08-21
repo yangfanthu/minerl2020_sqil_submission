@@ -32,9 +32,7 @@ def main():
         'MineRLObtainDiamond-v0', 'MineRLObtainDiamondDense-v0',
         # obfuscated envs
         'MineRLTreechopVectorObf-v0',
-        'MineRLNavigateVectorObf-v0', 'MineRLNavigateExtremeVectorObf-v0',
-        # MineRL data pipeline fails for these envs: https://github.com/minerllabs/minerl/issues/364
-        # 'MineRLNavigateDenseVectorObf-v0', 'MineRLNavigateExtremeDenseVectorObf-v0',
+        'MineRLNavigateVectorObf-v0', 'MineRLNavigateExtremeVectorObf-v0', 'MineRLNavigateDenseVectorObf-v0', 'MineRLNavigateExtremeDenseVectorObf-v0',
         'MineRLObtainDiamondVectorObf-v0', 'MineRLObtainDiamondDenseVectorObf-v0',
         'MineRLObtainIronPickaxeVectorObf-v0', 'MineRLObtainIronPickaxeDenseVectorObf-v0',
         # for debugging
@@ -143,6 +141,7 @@ def _main(args):
         randomize_action = test and args.noisy_net_sigma is None
         wrapped_env = wrap_env(
             env=env, test=test,
+            env_id=args.env,
             monitor=args.monitor, outdir=args.outdir,
             frame_skip=args.frame_skip,
             gray_scale=args.gray_scale, frame_stack=args.frame_stack,

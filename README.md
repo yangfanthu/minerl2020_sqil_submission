@@ -1,7 +1,7 @@
-# NeurIPS 2020: MineRL Competition Rainbow Baseline with PFRL
+# NeurIPS 2020: MineRL Competition SQIL Baseline with PFRL
 
-This repository is a **Rainbow baseline submission example with [PFRL](https://github.com/pfnet/pfrl)**,
-originated from [the main MineRL Competition submission template and starter kit](https://github.com/minerllabs/competition_submission_template).
+This repository is a **SQIL baseline submission example with [PFRL](https://github.com/pfnet/pfrl)**,
+following the format of [the MineRL Rainbow Baseline with PFRL](https://github.com/keisuke-nakata/minerl2020_submission).
 
 For detailed & latest documentation about the competition/template, see the original template repository.
 
@@ -12,6 +12,9 @@ Please ignore `train.py`, which will be used in Round 2.
 
 `train/` directory contains baseline agent's model weight files trained on `MineRLObtainDiamondDenseVectorObf-v0`.
 
+## List of current baselines
+- [Rainbow](https://github.com/keisuke-nakata/minerl2020_submission)
+- **SQIL** <-- We are here
 
 # How to Submit
 
@@ -31,15 +34,16 @@ If everything works out correctly, you should be able to see your score on the
 
 # About Baseline Algorithm
 
-This baseline consists of two main steps:
+This baseline consists of three main steps:
 
 1. [Apply K-means clustering](https://minerl.io/docs/tutorials/k-means.html) for the action space with the demonstration dataset.
-2. Apply Rainbow algorithm on the discretized action space.
+2. Calculate cumulative reward boundaries for each subtask so that the amount of frames in the demonstration is equally separated.
+3. Apply SQIL algorithm on the discretized action space.
 
-Each of steps utilizes existing libraries.  
-K-means in the step 1 is from [scikit-learn](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html#sklearn.cluster.KMeans),
-and Rainbow in the spte 2 is from [PFRL](https://github.com/pfnet/pfrl),
-which is a Pytorch-based RL library.
+K-means in the step 1 is from [scikit-learn](https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html#sklearn.cluster.KMeans).
+In this baseline, **the agent maintains two clusters with different sampling criteria**: One is sampled from frames changing `vector` in the next observation and the other is from the remaining.
+
+The implementation of SQIL is not included into [PFRL](https://github.com/pfnet/pfrl) agents but it is based on PFRL's DQN implementation.
 
 
 # How to Train Baseline Agent on your own
@@ -52,14 +56,16 @@ pip install numpy scipy scikit-learn pandas tqdm joblib pfrl
 # Don't forget to set this!
 export MINERL_DATA_ROOT=<directory you want to store demonstration dataset>
 
-python3 mod/dqn_family.py \
+
+python3 mod/sqil.py \
   --gpu 0 --env "MineRLObtainDiamondDenseVectorObf-v0"  \
   --outdir result \
-  --noisy-net-sigma 0.5 --arch distributed_dueling --replay-capacity 300000 --replay-start-size 5000 --target-update-interval 10000 \
-  --num-step-return 10 --agent CategoricalDoubleDQN --monitor --lr 0.0000625 --adam-eps 0.00015 --prioritized --frame-stack 4 --frame-skip 4 \
-  --gamma 0.99 --batch-accumulator mean
-
+  --replay-capacity 300000 --replay-start-size 5000 --target-update-interval 10000 \
+  --num-step-return 1 --lr 0.0000625 --adam-eps 0.00015 --frame-stack 4 --frame-skip 4 \
+  --gamma 0.99 --batch-accumulator mean --exp-reward-scale 10 --logging-level 20 \
+  --steps 4000000 --eval-n-runs 20 --arch dueling --dual-kmeans --kmeans-n-clusters-vc 60 --option-n-groups 10
 ```
+or you can call a fixed setting from `train.py`.
 
 
 # Team

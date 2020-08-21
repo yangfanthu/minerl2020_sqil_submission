@@ -9,6 +9,7 @@ import aicrowd_helper
 import gym
 import minerl
 from utility.parser import Parser
+import mod.sqil
 
 import coloredlogs
 coloredlogs.install(logging.DEBUG)
@@ -45,8 +46,26 @@ def main():
     # http://minerl.io/docs/tutorials/data_sampling.html
     data = minerl.data.make(MINERL_GYM_ENV, data_dir=MINERL_DATA_ROOT)
 
+    os.environ['KMEANS_CACHE'] = './train/kmeans_cache'
+    os.environ['BOUNDARY_CACHE'] = './train/boundary_cache'
+    os.environ['MINERL_DATA_ROOT'] = './data/'
+
+    TRAINING_STEPS = 4000000
+
+    mod.sqil.main(argv=[
+        '--env', 'MineRLObtainDiamondVectorObf-v0',
+        '--outdir', './train/results',
+        '--gpu', '-1',  # Need to be set 0 if you want to use GPU.
+        '--steps', str(TRAINING_STEPS),
+        '--eval-interval', '2500',
+        '--eval-n-runs', '20',
+        '--remove-timestamp',  # save to outdir/latest
+        '--dual-kmeans',
+        '--kmeans-n-clusters-vc', '60',
+        '--option-n-groups', '10'])
+
     # Sample code for illustration, add your training code below
-    env = gym.make(MINERL_GYM_ENV)
+    # env = gym.make(MINERL_GYM_ENV)
 
 #     actions = [env.action_space.sample() for _ in range(10)] # Just doing 10 samples in this example
 #     xposes = []

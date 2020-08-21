@@ -16,19 +16,21 @@ logger = getLogger(__name__)
 
 def wrap_env(
         env, test,
+        env_id,
         monitor, outdir,
         frame_skip,
         gray_scale, frame_stack,
         randomize_action, eval_epsilon,
-        action_choices):
+        action_choices,
+        action_choices_vector_converter=None,
+        append_reward_channel=False):
     # wrap env: time limit...
-    # Don't use `ContinuingTimeLimit` for testing, in order to avoid unexpected behavior on submissions.
-    # (Submission utility regards "done" as an episode end, which will result in endless evaluation)
-    if not test and isinstance(env, gym.wrappers.TimeLimit):
-        logger.info('Detected `gym.wrappers.TimeLimit`! Unwrap it and re-wrap our own time limit.')
-        env = env.env
-        max_episode_steps = env.spec.max_episode_steps
-        env = ContinuingTimeLimit(env, max_episode_steps=max_episode_steps)
+    if not test:
+        if isinstance(env, gym.wrappers.TimeLimit):
+            logger.info('Detected `gym.wrappers.TimeLimit`! Unwrap it and re-wrap our own time limit.')
+            env = env.env
+            max_episode_steps = env.spec.max_episode_steps
+            env = ContinuingTimeLimit(env, max_episode_steps=max_episode_steps)
 
     # wrap env: observation...
     # NOTE: wrapping order matters!
@@ -37,17 +39,28 @@ def wrap_env(
         env = Monitor(
             env, os.path.join(outdir, env.spec.id, 'monitor'),
             mode='evaluation' if test else 'training', video_callable=lambda episode_id: True)
+    if action_choices_vector_converter is None:
+        env = ClusteredActionWrapper(env, clusters=action_choices)
+    else:
+        env = DualClusteredActionWrapper(
+            env, clusters_normal=action_choices,
+            clusters_vector_converter=action_choices_vector_converter)
     if frame_skip is not None:
-        env = FrameSkip(env, skip=frame_skip)
+        env = FrameSkip(env, skip=frame_skip, normal_action_len=len(action_choices))
     if gray_scale:
         env = GrayScaleWrapper(env, dict_space_key='pov')
-    env = ObtainPoVWrapper(env)
+    if env_id.find('VectorObf') != -1:
+        env = PoVWithVectorWrapper(env)
+    elif env_id.startswith('MineRLNavigate'):
+        env = PoVWithCompassAngleWrapper(env)
+    else:
+        env = ObtainPoVWrapper(env)
+    if append_reward_channel:
+        env = AppendCumulativeRewardWrapper(env)
     env = MoveAxisWrapper(env, source=-1, destination=0)  # convert hwc -> chw as Pytorch requires.
     env = ScaledFloatFrame(env)
     if frame_stack is not None and frame_stack > 0:
         env = FrameStack(env, frame_stack, channel_order='chw')
-
-    env = ClusteredActionWrapper(env, clusters=action_choices)
 
     if randomize_action:
         env = RandomizeAction(env, eval_epsilon)
@@ -55,21 +68,55 @@ def wrap_env(
     return env
 
 
+class AppendCumulativeRewardWrapper(gym.Wrapper):
+    """Append Cumulative Reward
+    """
+    def __init__(self, env, reward_scale=1./1024):
+        super().__init__(env)
+
+        self._cumulative_reward = 0
+        self._reward_scale = reward_scale
+        low = self.env.observation_space.low
+        high = self.env.observation_space.high
+        reward_channel_low = np.ones((*low.shape[:-1], 1), dtype=np.float32)  # noqa
+        reward_channel_high = np.ones((*high.shape[:-1], 1), dtype=np.float32) * np.inf  # noqa
+        low = np.concatenate([low, reward_channel_low], axis=-1)
+        high = np.concatenate([high, reward_channel_high], axis=-1)
+        self.observation_space = gym.spaces.Box(low=low, high=high, dtype=low.dtype)
+
+    def _get_ob(self, ob):
+        reward_channel = np.ones((*ob.shape[:-1], 1), dtype=np.float32) * self._reward_scale * self._cumulative_reward  # noqa
+        return np.concatenate([ob, reward_channel], axis=-1)
+
+    def reset(self):
+        ob = self.env.reset()
+        self._cumulative_reward = 0
+        return self._get_ob(ob)
+
+    def step(self, action):
+        ob, reward, done, info = self.env.step(action)
+        self._cumulative_reward += reward
+        return self._get_ob(ob), reward, done, info
+
+
 class FrameSkip(gym.Wrapper):
     """Return every `skip`-th frame and repeat given action during skip.
 
     Note that this wrapper does not "maximize" over the skipped frames.
     """
-    def __init__(self, env, skip=4):
+    def __init__(self, env, skip=4, normal_action_len=None):
         super().__init__(env)
 
         self._skip = skip
+        self.normal_action_len = normal_action_len
 
-    def step(self, action):
+    def step(self, action, **kwargs):
         total_reward = 0.0
         for _ in range(self._skip):
             obs, reward, done, info = self.env.step(action)
             total_reward += reward
+            if self.normal_action_len is not None and action >= self.normal_action_len:
+                action = np.random.choice(self.normal_action_len)
             if done:
                 break
         return obs, total_reward, done, info
@@ -112,7 +159,7 @@ class FrameStack(gym.Wrapper):
             self.observations.append(ob)
         return self._get_ob()
 
-    def step(self, action):
+    def step(self, action, **kwargs):
         ob, reward, done, info = self.env.step(action)
         self.observations.append(ob)
         return self._get_ob(), reward, done, info
@@ -137,6 +184,55 @@ class ObtainPoVWrapper(gym.ObservationWrapper):
 
     def observation(self, observation):
         return observation['pov']
+
+
+class PoVWithCompassAngleWrapper(gym.ObservationWrapper):
+    """Take 'pov' value (current game display) and concatenate compass angle information with it, as a new channel of image;
+    resulting image has RGB+compass (or K+compass for gray-scaled image) channels.
+    """
+    def __init__(self, env):
+        super().__init__(env)
+
+        self._compass_angle_scale = 180 / 255  # NOTE: `ScaledFloatFrame` will scale the pixel values with 255.0 later
+
+        pov_space = self.env.observation_space.spaces['pov']
+        compass_angle_space = self.env.observation_space.spaces['compassAngle']
+
+        low = self.observation({'pov': pov_space.low, 'compassAngle': compass_angle_space.low})
+        high = self.observation({'pov': pov_space.high, 'compassAngle': compass_angle_space.high})
+
+        self.observation_space = gym.spaces.Box(low=low, high=high)
+
+    def observation(self, observation):
+        pov = observation['pov']
+        compass_scaled = observation['compassAngle'] / self._compass_angle_scale
+        compass_channel = np.ones(shape=list(pov.shape[:-1]) + [1], dtype=pov.dtype) * compass_scaled
+        return np.concatenate([pov, compass_channel], axis=-1)
+
+
+class PoVWithVectorWrapper(gym.ObservationWrapper):
+    """Take 'pov' value (current game display) and concatenate compass angle information with it, as a new channel of image;
+    resulting image has RGB+vector (or K+vector for gray-scaled image) channels.
+    """
+    def __init__(self, env):
+        super().__init__(env)
+
+        self._vector_scale = 1 / 255  # NOTE: `ScaledFloatFrame` will scale the pixel values with 255.0 later
+
+        pov_space = self.env.observation_space.spaces['pov']
+        vector_space = self.env.observation_space.spaces['vector']
+
+        low = self.observation({'pov': pov_space.low, 'vector': vector_space.low})
+        high = self.observation({'pov': pov_space.high, 'vector': vector_space.high})
+
+        self.observation_space = gym.spaces.Box(low=low, high=high)
+
+    def observation(self, observation):
+        pov = observation['pov']
+        vector_scaled = observation['vector'] / self._vector_scale
+        num_elem = pov.shape[-3] * pov.shape[-2]
+        vector_channel = np.tile(vector_scaled, num_elem // vector_scaled.shape[-1]).reshape(*pov.shape[:-1], -1)  # noqa
+        return np.concatenate([pov, vector_channel], axis=-1)
 
 
 class UnifiedObservationWrapper(gym.ObservationWrapper):
@@ -341,6 +437,29 @@ class ClusteredActionWrapper(gym.ActionWrapper):
 
     def action(self, action):
         return {'vector': self._clusters[action]}
+
+    def seed(self, seed):
+        super().seed(seed)
+        self._np_random.seed(seed)
+
+
+class DualClusteredActionWrapper(gym.ActionWrapper):
+    def __init__(self, env, clusters_normal, clusters_vector_converter):
+        super().__init__(env)
+        self._clusters_normal = clusters_normal
+        self._clusters_vector_converter = clusters_vector_converter
+
+        self._np_random = np.random.RandomState()
+
+        self.action_space = gym.spaces.Discrete(
+            len(clusters_normal) + len(clusters_vector_converter))  # noqa
+
+    def action(self, action):
+        num_action_normal = len(self._clusters_normal)
+        if action < num_action_normal:
+            return {'vector': self._clusters_normal[action]}
+        else:
+            return {'vector': self._clusters_vector_converter[action - num_action_normal]}  # noqa
 
     def seed(self, seed):
         super().seed(seed)
