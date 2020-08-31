@@ -10,11 +10,13 @@ This repository is a sample of the "Round 1" submission, i.e., the agents are tr
 `test.py` is the entrypoint script for Round 1.  
 Please ignore `train.py`, which will be used in Round 2.
 
-`train/` directory contains baseline agent's model weight files trained on `MineRLObtainDiamondDenseVectorObf-v0`.
+`train/` directory contains baseline agent's model weight files trained on `MineRLObtainDiamondVectorObf-v0`.
 
 ## List of current baselines
 - [Rainbow](https://github.com/keisuke-nakata/minerl2020_submission)
 - **SQIL** <-- We are here
+- [DQfD](https://github.com/marioyc/minerl2020_dqfd_submission)
+- [PDDDQN](https://github.com/ummavi/minerl2020_submission)
 
 # How to Submit
 
@@ -58,7 +60,7 @@ export MINERL_DATA_ROOT=<directory you want to store demonstration dataset>
 
 
 python3 mod/sqil.py \
-  --gpu 0 --env "MineRLObtainDiamondDenseVectorObf-v0"  \
+  --gpu 0 --env "MineRLObtainDiamondVectorObf-v0"  \
   --outdir result \
   --replay-capacity 300000 --replay-start-size 5000 --target-update-interval 10000 \
   --num-step-return 1 --lr 0.0000625 --adam-eps 0.00015 --frame-stack 4 --frame-skip 4 \
