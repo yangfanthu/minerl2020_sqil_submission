@@ -23,7 +23,7 @@ import coloredlogs
 coloredlogs.install(logging.DEBUG)
 
 # Agent settings
-GPU = -1
+GPU = 0
 
 ARCH = 'dueling'
 KMEANS_N_CLUSTERS = 30

@@ -4,5 +4,5 @@
   "authors": ["minerl_sqil_baseline"],
   "tags": "IL",
   "description": "Test Model for MineRL Challenge",
-  "gpu": false
+  "gpu": true
 }
