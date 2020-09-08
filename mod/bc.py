@@ -242,7 +242,7 @@ def _main(args):
             action_list = []
             for batch in range(batch_size):
                 obs, action, rewards, next_obs, done = experts.sample()
-                obs = torch.tensor(np.array(obs)).float().to(device)
+                obs = torch.tensor(np.array(obs)).float().unsqeeze(0).to(device)
                 next_obs = torch.tensor(np.array((next_obs))).float().to(device)
                 action = torch.tensor(action).long().unsqueeze(0).to(device)
                 obs_list.append(obs)
