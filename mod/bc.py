@@ -264,7 +264,7 @@ def _main(args):
                 writer.add_scalar('/train/loss', loss.item(), n_batch_train)
             if step % 2000 == 0:
                 print("saving model....")
-                torch.save(q_function.state_dict(),'./training_cache/q_function_{}_{}.ckpt'.format(epoch, step))
+                torch.save(q_function.state_dict(),'./results/q_function_{}_{}.ckpt'.format(epoch, step))
 
     # criterion = torch.nn.MSELoss()
 
