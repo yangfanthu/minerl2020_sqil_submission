@@ -244,7 +244,7 @@ def _main(args):
                 obs, action, rewards, next_obs, done = experts.sample()
                 obs = torch.tensor(np.array(obs)).float().to(device)
                 next_obs = torch.tensor(np.array((next_obs))).float().to(device)
-                action = torch.tensor(action).float().to(device)
+                action = torch.tensor(action).long().unsqueeze(0).to(device)
                 obs_list.append(obs)
                 action_list.append(action)
             obs = torch.cat(obs_list)
