@@ -27,9 +27,14 @@ from data.action_converter import (
     KMeansActionConverter, DualKMeansActionConverter)
 from agents.sqil import SQIL
 
+from bc_module import QFunction
+from tensorboardX import SummaryWriter
+
 import pdb
 
 logger = logging.getLogger(__name__)
+writer = SummaryWriter(logdir=('results/{}').format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def main(argv=None):
@@ -122,7 +127,7 @@ def main(argv=None):
     parser.add_argument('--exp-reward-scale', type=float, default=1, help='Expert reward scale to control randomness.')
     parser.add_argument('--experience-lambda', type=float, default=1, help='Weight coefficient of batches from experiences.')
     parser.add_argument('--option-n-groups', type=int, default=1, help='Number of options to switch polices.')
-
+    parser.add_argument('--num-actions', type=int, default = 30, help='num of acitons can be taken')
     args = parser.parse_args(args=argv)
 
     if args.remove_timestamp:
@@ -219,121 +224,26 @@ def _main(args):
             frameskip=args.frame_skip, framestack=args.frame_stack,
             append_reward_channel=(args.option_n_groups > 1),
             reward_scale=reward_channel_scale)
-    temp = experts.sampel()
-    pdb.set_trace()
+    # temp = experts.sample()
 
-    # # create & wrap env
-    # def wrap_env_partial(env, test):
-    #     randomize_action = False  # test and args.noisy_net_sigma is None
-    #     if args.dual_kmeans:
-    #         action_choices_normal = kmeans_normal.cluster_centers_
-    #         action_choices_vector_converter = kmeans_vector_converter.cluster_centers_  # noqa
-    #     else:
-    #         action_choices_normal = kmeans.cluster_centers_
-    #         action_choices_vector_converter = None
-    #     wrapped_env = wrap_env(
-    #         env=env, test=test,
-    #         env_id=args.env,
-    #         monitor=args.monitor, outdir=args.outdir,
-    #         frame_skip=args.frame_skip,
-    #         gray_scale=args.gray_scale, frame_stack=args.frame_stack,
-    #         randomize_action=randomize_action, eval_epsilon=args.eval_epsilon,
-    #         action_choices=action_choices_normal,
-    #         action_choices_vector_converter=action_choices_vector_converter,
-    #         append_reward_channel=(args.option_n_groups > 1))
-    #     return wrapped_env
-    # logger.info('The first `gym.make(MineRL*)` may take several minutes. Be patient!')
-    # core_env = gym.make(args.env)
-    # # training env
-    # env = wrap_env_partial(env=core_env, test=False)
-    # # env.seed(int(train_seed))  # TODO: not supported yet
-    # # evaluation env
-    # eval_env = wrap_env_partial(env=core_env, test=True)
-    # # env.seed(int(test_seed))  # TODO: not supported yet (also requires `core_eval_env = gym.make(args.env)`)
+    q_function = QFunction(n_actions = args.num_actions).to(device)
 
-    # # calculate corresponding `steps` and `eval_interval` according to frameskip
-    # # 8,000,000 frames = 1333 episodes if we count an episode as 6000 frames,
-    # # 8,000,000 frames = 1000 episodes if we count an episode as 8000 frames.
-    # maximum_frames = args.steps
-    # if args.frame_skip is None:
-    #     steps = maximum_frames
-    #     eval_interval = args.eval_interval
-    # else:
-    #     steps = maximum_frames // args.frame_skip
-    #     eval_interval = args.eval_interval // args.frame_skip
+    learning_rate = 1e-3
+    optimizer = torch.optim.Adam(q_function.parameters(), lr=learning_rate)  
+    criterion = torch.nn.CrossEntropyLoss()
+    total_epochs = 50
+    total_steps = 2000
 
-    # agent = get_agent(
-    #     n_actions=env.action_space.n, arch=args.arch, n_input_channels=env.observation_space.shape[0],
-    #     # noisy_net_sigma=args.noisy_net_sigma,
-    #     final_epsilon=args.final_epsilon,
-    #     final_exploration_frames=args.final_exploration_frames, explorer_sample_func=env.action_space.sample,
-    #     lr=args.lr, adam_eps=args.adam_eps,
-    #     # prioritized=args.prioritized,
-    #     steps=steps, update_interval=args.update_interval,
-    #     replay_capacity=args.replay_capacity, num_step_return=args.num_step_return,
-    #     gpu=args.gpu, gamma=args.gamma, replay_start_size=args.replay_start_size,
-    #     target_update_interval=args.target_update_interval, clip_delta=args.clip_delta,
-    #     batch_accumulator=args.batch_accumulator, expert_dataset=experts,
-    #     exp_reward_scale=args.exp_reward_scale, experience_lambda=args.experience_lambda,
-    #     reward_boundaries=boundaries, reward_channel_scale=reward_channel_scale,
-    # )
+    for epoch in range(total_epochs):
+        for step in range(total_steps):
+            obs, action, rewards, next_obs, done = expert.sample()
+            obs = torch.tensor(obs).float().to(device)
+            next_obs = torch.tensor(obs).float().to(device)
+            action = torch.tensor(action).float().to(device)
 
-    # if args.load:
-    #     agent.load(args.load)
-
-    # # experiment
-    # if args.demo:
-    #     eval_stats = pfrl.experiments.eval_performance(env=eval_env, agent=agent, n_steps=None, n_episodes=args.eval_n_runs)
-    #     logger.info('n_runs: {} mean: {} median: {} stdev {}'.format(
-    #         args.eval_n_runs, eval_stats['mean'], eval_stats['median'], eval_stats['stdev']))
-    # else:
-    #     pfrl.experiments.train_agent_with_evaluation(
-    #         agent=agent, env=env, steps=steps,
-    #         eval_n_steps=None, eval_n_episodes=args.eval_n_runs, eval_interval=eval_interval,
-    #         outdir=args.outdir, eval_env=eval_env, save_best_so_far_agent=True,
-    #     )
-
-    # env.close()
-    # eval_env.close()
+    # criterion = torch.nn.MSELoss()
 
 
-def get_agent(
-        n_actions, arch, n_input_channels,
-        # noisy_net_sigma,
-        final_epsilon, final_exploration_frames, explorer_sample_func,
-        lr, adam_eps,
-        # prioritized,
-        steps, update_interval, replay_capacity, num_step_return,
-        gpu, gamma, replay_start_size, target_update_interval, clip_delta, batch_accumulator,
-        expert_dataset, exp_reward_scale, experience_lambda, reward_boundaries, reward_channel_scale,
-):
-    # Q function
-    q_func = parse_arch(arch, n_actions, n_input_channels=n_input_channels,
-                        reward_boundaries=reward_boundaries,
-                        reward_channel_scale=reward_channel_scale)
-
-    # explorer
-    explorer = pfrl.explorers.Boltzmann(1.0)
-
-    # Use the Nature paper's hyperparameters
-    # opt = optimizers.RMSpropGraves(lr=lr, alpha=0.95, momentum=0.0, eps=1e-2)
-    opt = torch.optim.Adam(q_func.parameters(), lr, eps=adam_eps)  # NOTE: mirrors DQN implementation in MineRL paper
-
-    # Select a replay buffer to use
-    rbuf = pfrl.replay_buffers.ReplayBuffer(replay_capacity, num_step_return)
-
-    # build agent
-    def phi(x):
-        # observation -> NN input
-        return np.asarray(x)
-    agent = SQIL(
-        q_func, opt, rbuf, gpu=gpu, gamma=gamma, explorer=explorer, replay_start_size=replay_start_size,
-        target_update_interval=target_update_interval, clip_delta=clip_delta, update_interval=update_interval,
-        batch_accumulator=batch_accumulator, phi=phi, expert_dataset=expert_dataset,
-        reward_scale=exp_reward_scale, experience_lambda=experience_lambda,
-        reward_boundaries=reward_boundaries)
-
-    return agent
 
 
 if __name__ == '__main__':
