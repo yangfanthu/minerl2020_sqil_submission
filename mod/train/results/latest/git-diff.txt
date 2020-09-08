@@ -1,0 +1,28 @@
+diff --git a/mod/train_bc.py b/mod/train_bc.py
+index df8c481..1f873e4 100644
+--- a/mod/train_bc.py
++++ b/mod/train_bc.py
+@@ -5,11 +5,9 @@ import time
+ import logging
+ import os
+ 
+-import aicrowd_helper
+ import gym
+ import minerl
+-from utility.parser import Parser
+-import mod.sqil
++import sqil
+ 
+ import coloredlogs
+ 
+@@ -40,6 +38,10 @@ from agents.sqil import SQIL
+ 
+ import pdb
+ 
++sys.path.insert(0,'../')
++import aicrowd_helper
++from utility.parser import Parser
++
+ coloredlogs.install(logging.DEBUG)
+ 
+ # All the evaluations will be evaluated on MineRLObtainDiamond-v0 environment

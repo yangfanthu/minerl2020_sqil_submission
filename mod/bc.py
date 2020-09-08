@@ -29,6 +29,7 @@ from agents.sqil import SQIL
 
 from bc_module import QFunction
 from tensorboardX import SummaryWriter
+import datetime
 
 import pdb
 
@@ -95,7 +96,7 @@ def main(argv=None):
 
     # observation conversion related settings
     parser.add_argument('--gray-scale', action='store_true', default=False, help='Convert pov into gray scaled image.')
-    parser.add_argument('--frame-stack', type=int, default=4, help='Number of frames stacked (None for disable).')
+    parser.add_argument('--frame-stack', type=int, default=1, help='Number of frames stacked (None for disable).')
 
     # exploration related settings
     parser.add_argument('--final-exploration-frames', type=int, default=10 ** 6,
@@ -236,10 +237,11 @@ def _main(args):
 
     for epoch in range(total_epochs):
         for step in range(total_steps):
-            obs, action, rewards, next_obs, done = expert.sample()
-            obs = torch.tensor(obs).float().to(device)
-            next_obs = torch.tensor(obs).float().to(device)
+            obs, action, rewards, next_obs, done = experts.sample()
+            obs = torch.tensor(np.array(obs)).float().to(device)
+            next_obs = torch.tensor(np.array((next_obs))).float().to(device)
             action = torch.tensor(action).float().to(device)
+            pdb.set_trace()
 
     # criterion = torch.nn.MSELoss()
 

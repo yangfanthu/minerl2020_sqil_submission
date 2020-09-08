@@ -4,6 +4,8 @@ from collections import deque, OrderedDict
 from pfrl.wrappers.atari_wrappers import LazyFrames
 from data.action_converter import DualKMeansActionConverter
 
+import pdb
+
 
 logger = getLogger(__name__)
 
@@ -108,9 +110,9 @@ class DataPipelineWrapper:
         for converter in self.observation_converters:
             c_obs = converter(c_obs)
             c_next_obs = converter(c_next_obs)
-        if self.append_reward_channel:
-            c_obs = _append_reward_channel(c_obs, cumulative_rewards, self.reward_scale)
-            c_next_obs = _append_reward_channel(c_next_obs, cumulative_next_rewards, self.reward_scale)
+        # if self.append_reward_channel:
+        #     c_obs = _append_reward_channel(c_obs, cumulative_rewards, self.reward_scale)
+        #     c_next_obs = _append_reward_channel(c_next_obs, cumulative_next_rewards, self.reward_scale)
         c_actions = _trim_first_dim_in_dict(actions)
         for converter in self.action_converters:
             if isinstance(converter, DualKMeansActionConverter):
