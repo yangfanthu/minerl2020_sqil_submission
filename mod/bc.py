@@ -234,15 +234,22 @@ def _main(args):
     criterion = torch.nn.CrossEntropyLoss()
     total_epochs = 50
     total_steps = 2000
+    batch_size = 32
 
     for epoch in range(total_epochs):
         for step in range(total_steps):
-            obs, action, rewards, next_obs, done = experts.sample()
-            obs = torch.tensor(np.array(obs)).float().to(device)
-            next_obs = torch.tensor(np.array((next_obs))).float().to(device)
-            action = torch.tensor(action).float().to(device)
+            obs_list = []
+            action_list = []
+            for batch in range(batch_size):
+                obs, action, rewards, next_obs, done = experts.sample()
+                obs = torch.tensor(np.array(obs)).float().to(device)
+                next_obs = torch.tensor(np.array((next_obs))).float().to(device)
+                action = torch.tensor(action).float().to(device)
+                obs_list.append(obs)
+                action_list.append(action)
+            obs = torch.cat(obs_list)
+            action = torch.cat(action_list)
             pdb.set_trace()
-
     # criterion = torch.nn.MSELoss()
 
 
