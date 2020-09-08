@@ -219,81 +219,82 @@ def _main(args):
             frameskip=args.frame_skip, framestack=args.frame_stack,
             append_reward_channel=(args.option_n_groups > 1),
             reward_scale=reward_channel_scale)
+    temp = experts.sampel()
     pdb.set_trace()
 
-    # create & wrap env
-    def wrap_env_partial(env, test):
-        randomize_action = False  # test and args.noisy_net_sigma is None
-        if args.dual_kmeans:
-            action_choices_normal = kmeans_normal.cluster_centers_
-            action_choices_vector_converter = kmeans_vector_converter.cluster_centers_  # noqa
-        else:
-            action_choices_normal = kmeans.cluster_centers_
-            action_choices_vector_converter = None
-        wrapped_env = wrap_env(
-            env=env, test=test,
-            env_id=args.env,
-            monitor=args.monitor, outdir=args.outdir,
-            frame_skip=args.frame_skip,
-            gray_scale=args.gray_scale, frame_stack=args.frame_stack,
-            randomize_action=randomize_action, eval_epsilon=args.eval_epsilon,
-            action_choices=action_choices_normal,
-            action_choices_vector_converter=action_choices_vector_converter,
-            append_reward_channel=(args.option_n_groups > 1))
-        return wrapped_env
-    logger.info('The first `gym.make(MineRL*)` may take several minutes. Be patient!')
-    core_env = gym.make(args.env)
-    # training env
-    env = wrap_env_partial(env=core_env, test=False)
-    # env.seed(int(train_seed))  # TODO: not supported yet
-    # evaluation env
-    eval_env = wrap_env_partial(env=core_env, test=True)
-    # env.seed(int(test_seed))  # TODO: not supported yet (also requires `core_eval_env = gym.make(args.env)`)
+    # # create & wrap env
+    # def wrap_env_partial(env, test):
+    #     randomize_action = False  # test and args.noisy_net_sigma is None
+    #     if args.dual_kmeans:
+    #         action_choices_normal = kmeans_normal.cluster_centers_
+    #         action_choices_vector_converter = kmeans_vector_converter.cluster_centers_  # noqa
+    #     else:
+    #         action_choices_normal = kmeans.cluster_centers_
+    #         action_choices_vector_converter = None
+    #     wrapped_env = wrap_env(
+    #         env=env, test=test,
+    #         env_id=args.env,
+    #         monitor=args.monitor, outdir=args.outdir,
+    #         frame_skip=args.frame_skip,
+    #         gray_scale=args.gray_scale, frame_stack=args.frame_stack,
+    #         randomize_action=randomize_action, eval_epsilon=args.eval_epsilon,
+    #         action_choices=action_choices_normal,
+    #         action_choices_vector_converter=action_choices_vector_converter,
+    #         append_reward_channel=(args.option_n_groups > 1))
+    #     return wrapped_env
+    # logger.info('The first `gym.make(MineRL*)` may take several minutes. Be patient!')
+    # core_env = gym.make(args.env)
+    # # training env
+    # env = wrap_env_partial(env=core_env, test=False)
+    # # env.seed(int(train_seed))  # TODO: not supported yet
+    # # evaluation env
+    # eval_env = wrap_env_partial(env=core_env, test=True)
+    # # env.seed(int(test_seed))  # TODO: not supported yet (also requires `core_eval_env = gym.make(args.env)`)
 
-    # calculate corresponding `steps` and `eval_interval` according to frameskip
-    # 8,000,000 frames = 1333 episodes if we count an episode as 6000 frames,
-    # 8,000,000 frames = 1000 episodes if we count an episode as 8000 frames.
-    maximum_frames = args.steps
-    if args.frame_skip is None:
-        steps = maximum_frames
-        eval_interval = args.eval_interval
-    else:
-        steps = maximum_frames // args.frame_skip
-        eval_interval = args.eval_interval // args.frame_skip
+    # # calculate corresponding `steps` and `eval_interval` according to frameskip
+    # # 8,000,000 frames = 1333 episodes if we count an episode as 6000 frames,
+    # # 8,000,000 frames = 1000 episodes if we count an episode as 8000 frames.
+    # maximum_frames = args.steps
+    # if args.frame_skip is None:
+    #     steps = maximum_frames
+    #     eval_interval = args.eval_interval
+    # else:
+    #     steps = maximum_frames // args.frame_skip
+    #     eval_interval = args.eval_interval // args.frame_skip
 
-    agent = get_agent(
-        n_actions=env.action_space.n, arch=args.arch, n_input_channels=env.observation_space.shape[0],
-        # noisy_net_sigma=args.noisy_net_sigma,
-        final_epsilon=args.final_epsilon,
-        final_exploration_frames=args.final_exploration_frames, explorer_sample_func=env.action_space.sample,
-        lr=args.lr, adam_eps=args.adam_eps,
-        # prioritized=args.prioritized,
-        steps=steps, update_interval=args.update_interval,
-        replay_capacity=args.replay_capacity, num_step_return=args.num_step_return,
-        gpu=args.gpu, gamma=args.gamma, replay_start_size=args.replay_start_size,
-        target_update_interval=args.target_update_interval, clip_delta=args.clip_delta,
-        batch_accumulator=args.batch_accumulator, expert_dataset=experts,
-        exp_reward_scale=args.exp_reward_scale, experience_lambda=args.experience_lambda,
-        reward_boundaries=boundaries, reward_channel_scale=reward_channel_scale,
-    )
+    # agent = get_agent(
+    #     n_actions=env.action_space.n, arch=args.arch, n_input_channels=env.observation_space.shape[0],
+    #     # noisy_net_sigma=args.noisy_net_sigma,
+    #     final_epsilon=args.final_epsilon,
+    #     final_exploration_frames=args.final_exploration_frames, explorer_sample_func=env.action_space.sample,
+    #     lr=args.lr, adam_eps=args.adam_eps,
+    #     # prioritized=args.prioritized,
+    #     steps=steps, update_interval=args.update_interval,
+    #     replay_capacity=args.replay_capacity, num_step_return=args.num_step_return,
+    #     gpu=args.gpu, gamma=args.gamma, replay_start_size=args.replay_start_size,
+    #     target_update_interval=args.target_update_interval, clip_delta=args.clip_delta,
+    #     batch_accumulator=args.batch_accumulator, expert_dataset=experts,
+    #     exp_reward_scale=args.exp_reward_scale, experience_lambda=args.experience_lambda,
+    #     reward_boundaries=boundaries, reward_channel_scale=reward_channel_scale,
+    # )
 
-    if args.load:
-        agent.load(args.load)
+    # if args.load:
+    #     agent.load(args.load)
 
-    # experiment
-    if args.demo:
-        eval_stats = pfrl.experiments.eval_performance(env=eval_env, agent=agent, n_steps=None, n_episodes=args.eval_n_runs)
-        logger.info('n_runs: {} mean: {} median: {} stdev {}'.format(
-            args.eval_n_runs, eval_stats['mean'], eval_stats['median'], eval_stats['stdev']))
-    else:
-        pfrl.experiments.train_agent_with_evaluation(
-            agent=agent, env=env, steps=steps,
-            eval_n_steps=None, eval_n_episodes=args.eval_n_runs, eval_interval=eval_interval,
-            outdir=args.outdir, eval_env=eval_env, save_best_so_far_agent=True,
-        )
+    # # experiment
+    # if args.demo:
+    #     eval_stats = pfrl.experiments.eval_performance(env=eval_env, agent=agent, n_steps=None, n_episodes=args.eval_n_runs)
+    #     logger.info('n_runs: {} mean: {} median: {} stdev {}'.format(
+    #         args.eval_n_runs, eval_stats['mean'], eval_stats['median'], eval_stats['stdev']))
+    # else:
+    #     pfrl.experiments.train_agent_with_evaluation(
+    #         agent=agent, env=env, steps=steps,
+    #         eval_n_steps=None, eval_n_episodes=args.eval_n_runs, eval_interval=eval_interval,
+    #         outdir=args.outdir, eval_env=eval_env, save_best_so_far_agent=True,
+    #     )
 
-    env.close()
-    eval_env.close()
+    # env.close()
+    # eval_env.close()
 
 
 def get_agent(
