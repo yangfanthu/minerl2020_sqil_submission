@@ -1,22 +1,11 @@
-# Simple env test.
-import json
-import select
-import time
-import logging
 import os
-
-import aicrowd_helper
-import gym
-import minerl
-from utility.parser import Parser
-import mod.sqil
-
-import coloredlogs
-
+import logging
 import argparse
 
 import numpy as np
 import torch
+import minerl  # noqa: register MineRL envs as Gym envs.
+import gym
 
 import pfrl
 
@@ -39,35 +28,6 @@ from data.action_converter import (
 from agents.sqil import SQIL
 
 import pdb
-
-coloredlogs.install(logging.DEBUG)
-
-# All the evaluations will be evaluated on MineRLObtainDiamond-v0 environment
-MINERL_GYM_ENV = os.getenv('MINERL_GYM_ENV', 'MineRLObtainDiamondVectorObf-v0')
-# You need to ensure that your submission is trained in under MINERL_TRAINING_MAX_STEPS steps
-MINERL_TRAINING_MAX_STEPS = int(os.getenv('MINERL_TRAINING_MAX_STEPS', 8000000))
-# You need to ensure that your submission is trained by launching less than MINERL_TRAINING_MAX_INSTANCES instances
-MINERL_TRAINING_MAX_INSTANCES = int(os.getenv('MINERL_TRAINING_MAX_INSTANCES', 5))
-# You need to ensure that your submission is trained within allowed training time.
-# Round 1: Training timeout is 15 minutes
-# Round 2: Training timeout is 4 days
-MINERL_TRAINING_TIMEOUT = int(os.getenv('MINERL_TRAINING_TIMEOUT_MINUTES', 4*24*60))
-# The dataset is available in data/ directory from repository root.
-MINERL_DATA_ROOT = os.getenv('MINERL_DATA_ROOT', 'data/')
-
-# Optional: You can view best effort status of your instances with the help of parser.py
-# This will give you current state like number of steps completed, instances launched and so on. Make your you keep a tap on the numbers to avoid breaching any limits.
-parser = Parser('performance/',
-                allowed_environment=MINERL_GYM_ENV,
-                maximum_instances=MINERL_TRAINING_MAX_INSTANCES,
-                maximum_steps=MINERL_TRAINING_MAX_STEPS,
-                raise_on_error=False,
-                no_entry_poll_timeout=600,
-                submission_timeout=MINERL_TRAINING_TIMEOUT*60,
-                initial_poll_timeout=600)
-
-
-
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +220,7 @@ def _main(args):
             append_reward_channel=(args.option_n_groups > 1),
             reward_scale=reward_channel_scale)
     pdb.set_trace()
+
     # create & wrap env
     def wrap_env_partial(env, test):
         randomize_action = False  # test and args.noisy_net_sigma is None
@@ -375,24 +336,4 @@ def get_agent(
 
 
 if __name__ == '__main__':
-    data = minerl.data.make(MINERL_GYM_ENV, data_dir=MINERL_DATA_ROOT)
-
-    os.environ['KMEANS_CACHE'] = './train/kmeans_cache'
-    os.environ['BOUNDARY_CACHE'] = './train/boundary_cache'
-    os.environ['MINERL_DATA_ROOT'] = './data/'
-
-    TRAINING_STEPS = 4000000
-
-    main(argv=[
-        '--env', 'MineRLObtainDiamondVectorObf-v0',
-        '--outdir', './train/results',
-        '--gpu', '-1',  # Need to be set 0 if you want to use GPU.
-        '--steps', str(TRAINING_STEPS),
-        '--eval-interval', '2500',
-        '--eval-n-runs', '20',
-        '--remove-timestamp',  # save to outdir/latest
-        '--dual-kmeans',
-        '--kmeans-n-clusters-vc', '60',
-        '--option-n-groups', '10'])
-
-
+    main()
