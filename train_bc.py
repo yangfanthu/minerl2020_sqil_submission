@@ -9,7 +9,7 @@ import aicrowd_helper
 import gym
 import minerl
 from utility.parser import Parser
-import mod.sqil
+import mod.bc
 
 import coloredlogs
 coloredlogs.install(logging.DEBUG)
