@@ -233,23 +233,39 @@ def _main(args):
     optimizer = torch.optim.Adam(q_function.parameters(), lr=learning_rate)  
     criterion = torch.nn.CrossEntropyLoss()
     total_epochs = 50
-    total_steps = 2000
+    total_steps = 2500
     batch_size = 32
 
+    n_batch_train = 0
     for epoch in range(total_epochs):
         for step in range(total_steps):
             obs_list = []
             action_list = []
             for batch in range(batch_size):
                 obs, action, rewards, next_obs, done = experts.sample()
-                obs = torch.tensor(np.array(obs)).float().unsqeeze(0).to(device)
+                obs = torch.tensor(np.array(obs)).float().unsqueeze(0).to(device)
                 next_obs = torch.tensor(np.array((next_obs))).float().to(device)
                 action = torch.tensor(action).long().unsqueeze(0).to(device)
                 obs_list.append(obs)
                 action_list.append(action)
             obs = torch.cat(obs_list)
             action = torch.cat(action_list)
-            pdb.set_trace()
+            output = q_function(obs)
+            loss = criterion(output, action)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            # Model computations
+            n_batch_train += 1
+            # this_time = time.time()
+            # print("Training batch:", n_batch_train,'total', total_step,"time", this_time - begin_time)
+            if (step+1) % 100 == 0:
+                print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}' .format(epoch, max_epochs, step+1, total_step, loss.item()))
+                writer.add_scalar('/train/loss', loss.item(), n_batch_train)
+            if step % 2000 == 0:
+                print("saving model....")
+                torch.save(q_function.state_dict(),'./training_cache/q_function_{}_{}.ckpt'.format(epoch, step))
+
     # criterion = torch.nn.MSELoss()
 
 
