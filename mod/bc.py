@@ -35,8 +35,8 @@ import pdb
 
 logger = logging.getLogger(__name__)
 writer = SummaryWriter(logdir=('results/{}').format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")))
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+# device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device('cpu')
 
 def main(argv=None):
     parser = argparse.ArgumentParser()
@@ -130,7 +130,7 @@ def main(argv=None):
     parser.add_argument('--option-n-groups', type=int, default=1, help='Number of options to switch polices.')
     parser.add_argument('--num-actions', type=int, default = 30, help='num of acitons can be taken')
     args = parser.parse_args(args=argv)
-
+    args.dual_kmeans = False
     if args.remove_timestamp:
         args.outdir = pfrl.experiments.prepare_output_dir(args, args.outdir, exp_id='latest')
     else:
@@ -214,7 +214,7 @@ def _main(args):
         action_converters = [DualKMeansActionConverter(kmeans_normal, kmeans_vector_converter)]  # noqa
     else:
         action_converters = [KMeansActionConverter(kmeans)]
-
+    pdb.set_trace()
     if args.demo:
         experts = None  # dummy
     else:
@@ -251,7 +251,7 @@ def _main(args):
             obs = torch.cat(obs_list)
             action = torch.cat(action_list)
             output = q_function(obs)
-            loss = criterion(output, action)
+            loss = criterion(output,action)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -259,6 +259,7 @@ def _main(args):
             n_batch_train += 1
             # this_time = time.time()
             # print("Training batch:", n_batch_train,'total', total_step,"time", this_time - begin_time)
+            # print(step)
             if (step+1) % 100 == 0:
                 print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}' .format(epoch, max_epochs, step+1, total_step, loss.item()))
                 writer.add_scalar('/train/loss', loss.item(), n_batch_train)
