@@ -54,7 +54,8 @@ def main():
 
     mod.bc.main(argv=[
         # '--env', 'MineRLObtainDiamondVectorObf-v0',
-        '--env', 'MineRLTreechopVectorObf-v0',
+        # '--env', 'MineRLTreechopVectorObf-v0',
+        '--env', 'MineRLTreechop-v0',
         '--outdir', './train/results',
         '--gpu', '-1',  # Need to be set 0 if you want to use GPU.
         '--steps', str(TRAINING_STEPS),
