@@ -53,14 +53,15 @@ def main():
     TRAINING_STEPS = 4000000
 
     mod.bc.main(argv=[
-        '--env', 'MineRLObtainDiamondVectorObf-v0',
+        # '--env', 'MineRLObtainDiamondVectorObf-v0',
+        '--env', 'MineRLTreechopVectorObf-v0',
         '--outdir', './train/results',
         '--gpu', '-1',  # Need to be set 0 if you want to use GPU.
         '--steps', str(TRAINING_STEPS),
         '--eval-interval', '2500',
         '--eval-n-runs', '20',
         '--remove-timestamp',  # save to outdir/latest
-        '--dual-kmeans',
+        # '--dual-kmeans',
         '--kmeans-n-clusters-vc', '60',
         '--option-n-groups', '10'])
 

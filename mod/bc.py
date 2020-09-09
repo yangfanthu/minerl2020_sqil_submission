@@ -130,7 +130,6 @@ def main(argv=None):
     parser.add_argument('--option-n-groups', type=int, default=1, help='Number of options to switch polices.')
     parser.add_argument('--num-actions', type=int, default = 30, help='num of acitons can be taken')
     args = parser.parse_args(args=argv)
-    args.dual_kmeans = False
     if args.remove_timestamp:
         args.outdir = pfrl.experiments.prepare_output_dir(args, args.outdir, exp_id='latest')
     else:
