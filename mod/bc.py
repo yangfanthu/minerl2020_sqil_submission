@@ -213,7 +213,6 @@ def _main(args):
         action_converters = [DualKMeansActionConverter(kmeans_normal, kmeans_vector_converter)]  # noqa
     else:
         action_converters = [KMeansActionConverter(kmeans)]
-    pdb.set_trace()
     if args.demo:
         experts = None  # dummy
     else:
@@ -231,12 +230,12 @@ def _main(args):
     learning_rate = 1e-3
     optimizer = torch.optim.Adam(q_function.parameters(), lr=learning_rate)  
     criterion = torch.nn.CrossEntropyLoss()
-    total_epochs = 50
+    max_epochs = 50
     total_steps = 2500
     batch_size = 32
 
     n_batch_train = 0
-    for epoch in range(total_epochs):
+    for epoch in range(max_epochs):
         for step in range(total_steps):
             obs_list = []
             action_list = []
@@ -260,7 +259,7 @@ def _main(args):
             # print("Training batch:", n_batch_train,'total', total_step,"time", this_time - begin_time)
             # print(step)
             if (step+1) % 100 == 0:
-                print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}' .format(epoch, max_epochs, step+1, total_step, loss.item()))
+                print ('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}' .format(epoch, max_epochs, step+1, total_steps, loss.item()))
                 writer.add_scalar('/train/loss', loss.item(), n_batch_train)
             if step % 2000 == 0:
                 print("saving model....")
